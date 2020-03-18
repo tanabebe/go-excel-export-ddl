@@ -30,7 +30,7 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		if err != nil {
 			log.Fatal(err)
 		}
-		idxRows, err := readFile.GetRows("目次")
+		idxRows := readFile.GetRows("目次")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -45,7 +45,7 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		stm := ddl.Statement{}
 		for _, sheet := range readFile.GetSheetMap() {
 			for _, list := range noTargetList {
-				rows, err := readFile.GetRows(sheet)
+				rows := readFile.GetRows(sheet)
 				if err != nil {
 					log.Fatal(err)
 				}
