@@ -20,6 +20,7 @@ const (
 )
 
 func CreateImportButton(window fyne.Window) *fyne.Container {
+
 	importBtn := widget.NewButton("Please select an Excel file.", func() {
 		importFile, err := filedialog.File().Filter("", "xlsx").Title("ファイルを選択してください").Load()
 		if err != nil {
@@ -43,19 +44,21 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		}
 
 		stm := ddl.Statement{}
+
 		for _, sheet := range readFile.GetSheetMap() {
 			for _, list := range noTargetList {
 				rows, err := readFile.GetRows(sheet)
 				if err != nil {
 					log.Fatal(err)
 				}
+
 				if list != rows[TableNameRow][TableNameColumn] {
 					stm.GenerateDDL(rows)
 				}
 			}
 		}
 
-		filename, err := filedialog.File().Filter("", "sql").Title("保存する先を選択して下さい").Save()
+		filename, err := filedialog.File().Filter("GenerateDDL.sql", "txt").Title("保存する先を選択して下さい").Save()
 		if err != nil {
 			dialog.ShowError(err, window)
 			return
