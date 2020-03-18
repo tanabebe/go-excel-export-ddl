@@ -65,9 +65,8 @@ func GenerateSQLColumn(rows [][]string, i int) ([]byte, error) {
 		sql = append(sql, " date"...)
 	case "timestamp":
 		sql = append(sql, " timestamp"...)
-		// 該当しないデータ型はエラーにする
+	// 該当しないデータ型はエラーにする
 	default:
-		// TABLE名も入れたい
 		return sql, fmt.Errorf("%s", "Excelのデータ定義が不正です。")
 	}
 	if rows[i][constant.NotNull] != "" {
