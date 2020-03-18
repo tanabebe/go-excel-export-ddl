@@ -58,7 +58,7 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 			}
 		}
 
-		filename, err := filedialog.File().Filter("GenerateDDL.sql", "txt").Title("保存する先を選択して下さい").Save()
+		filename, err := filedialog.File().Filter("", "txt").Title("保存する先を選択して下さい").Save()
 		if err != nil {
 			dialog.ShowError(err, window)
 			return
