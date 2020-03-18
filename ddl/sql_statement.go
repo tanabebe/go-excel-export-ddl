@@ -2,88 +2,91 @@ package ddl
 
 import (
 	"fmt"
+
+	"github.com/tanabebe/go-excel-export-ddl/constant"
 )
 
+// Statement DDLの実行文を定義
 type Statement struct {
-	Ddl []byte
+	Ddl []byte // DDLの実行文
 }
 
-const (
-	TableNameRow    = 5  // テーブル名が記載されている行
-	TableNameColumn = 8  // テーブル名が記載されている列
-	Column          = 7  // テーブルのカラム名の記載位置
-	DataType        = 14 // テーブルのデータ型の記載位置
-	Length          = 17 // テーブルのデータ型の長さ記載位置
-	Pk              = 23 // プライマリキーの記載位置
-	NotNull         = 26 // NOT NULLの記載位置
-	AutoIncrement   = 35 // AUTO INCREMENTの記載位置
-	DefaultValue    = 38 // DEFAULT VALUEの記載位置
-)
-
-func (s *Statement) GenerateDDL(rows [][]string) {
-	s.Ddl = append(s.Ddl, "CREATE TABLE "...)
-	s.Ddl = append(s.Ddl, rows[TableNameRow][TableNameColumn]...)
-	s.Ddl = append(s.Ddl, " (\n"...)
+// GenerateDDL Excel内の1シート毎のDDLの全てを生成する
+func (s *Statement) GenerateDDL(rows [][]string) error {
+	sql := make([]byte, 0)
+	sql = append(sql, "CREATE TABLE "...)
+	sql = append(sql, rows[constant.TableNameRow][constant.TableNameColumn]...)
+	sql = append(sql, " (\n"...)
 
 	for i := 10; i < len(rows); i++ {
 		if rows[i] == nil || len(rows[i]) < 7 {
 			break
 		}
-		if rows[i][Column] != "" {
-			s.Ddl = s.GenerateColumnStruct(rows, i)
+		if rows[i][constant.Column] != "" {
+			result, err := GenerateSQLColumn(rows, i)
+			if err != nil {
+				return err
+			}
+			sql = append(sql, result...)
 		}
 	}
-	s.Ddl = append(s.Ddl, ");\n\n"...)
+	sql = append(sql, ");\n\n"...)
+	s.Ddl = append(s.Ddl, sql...)
+	return nil
 }
 
-func (s *Statement) GenerateColumnStruct(rows [][]string, i int) []byte { //, ddl []byte) []byte {
-	s.Ddl = append(s.Ddl, "\t"...)
-	s.Ddl = append(s.Ddl, rows[i][Column]...)
+// GenerateSQLColumn DDLのカラム定義を生成
+func GenerateSQLColumn(rows [][]string, i int) ([]byte, error) {
+	sql := make([]byte, 0)
 
-	switch rows[i][DataType] {
+	sql = append(sql, fmt.Sprintf("%4s", "")...)
+	sql = append(sql, rows[i][constant.Column]...)
+
+	switch rows[i][constant.DataType] {
 	case "varchar":
-		if rows[i][Length] != "" {
-			s.Ddl = append(s.Ddl, fmt.Sprintf(" varchar(%s)", rows[i][Length])...)
+		if rows[i][constant.Length] != "" {
+			sql = append(sql, fmt.Sprintf(" varchar(%s)", rows[i][constant.Length])...)
 		} else {
-			s.Ddl = append(s.Ddl, " text"...)
+			sql = append(sql, " text"...)
 		}
 	case "char":
-		s.Ddl = append(s.Ddl, " char"...)
+		sql = append(sql, " char"...)
 	case "text":
-		s.Ddl = append(s.Ddl, " text"...)
+		sql = append(sql, " text"...)
 	case "smallint":
-		s.Ddl = append(s.Ddl, " smallint"...)
+		sql = append(sql, " smallint"...)
 	case "integer":
-		s.Ddl = append(s.Ddl, " integer"...)
+		sql = append(sql, " integer"...)
 	case "bigint":
-		s.Ddl = append(s.Ddl, " bigint"...)
+		sql = append(sql, " bigint"...)
 	case "numeric":
-		s.Ddl = append(s.Ddl, " numeric"...)
+		sql = append(sql, " numeric"...)
 	case "date":
-		s.Ddl = append(s.Ddl, " date"...)
+		sql = append(sql, " date"...)
 	case "timestamp":
-		s.Ddl = append(s.Ddl, " timestamp"...)
+		sql = append(sql, " timestamp"...)
+		// 該当しないデータ型はエラーにする
 	default:
-		return s.Ddl
+		// TABLE名も入れたい
+		return sql, fmt.Errorf("%s", "Excelのデータ定義が不正です。")
 	}
-	if rows[i][NotNull] != "" {
-		s.Ddl = append(s.Ddl, " NOT NULL "...)
+	if rows[i][constant.NotNull] != "" {
+		sql = append(sql, " NOT NULL "...)
 	}
-	if rows[i][Pk] != "" {
-		s.Ddl = append(s.Ddl, " PRIMARY KEY"...)
+	if rows[i][constant.Pk] != "" {
+		sql = append(sql, " PRIMARY KEY"...)
 	}
-	if rows[i][DefaultValue] != "" {
-		s.Ddl = append(s.Ddl, fmt.Sprintf(" DEFAULT %s", rows[i][DefaultValue])...)
+	if rows[i][constant.DefaultValue] != "" {
+		sql = append(sql, fmt.Sprintf(" DEFAULT %s", rows[i][constant.DefaultValue])...)
 	}
-	if rows[i][AutoIncrement] != "" {
-		s.Ddl = append(s.Ddl, " SERIAL"...)
+	if rows[i][constant.AutoIncrement] != "" {
+		sql = append(sql, " SERIAL"...)
 	}
 
-	// 最終行の次カラムが空なら終了とみなす
-	if rows[i+1][Column] == "" {
-		s.Ddl = append(s.Ddl, "\n"...)
+	if rows[i+1][constant.Column] == "" {
+		sql = append(sql, "\n"...)
 	} else {
-		s.Ddl = append(s.Ddl, ", \n"...)
+		sql = append(sql, ", \n"...)
 	}
-	return s.Ddl
+	return sql, nil
 }

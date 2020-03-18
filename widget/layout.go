@@ -1,6 +1,7 @@
 package orgwidget
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,18 +12,15 @@ import (
 	"fyne.io/fyne/widget"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	filedialog "github.com/sqweek/dialog"
+	"github.com/tanabebe/go-excel-export-ddl/constant"
 	"github.com/tanabebe/go-excel-export-ddl/ddl"
 )
 
-const (
-	TableNameRow    = 5 // テーブル名が記載されている行
-	TableNameColumn = 8 // テーブル名が記載されている列
-)
-
+// CreateImportButton Excelファイルを選択するfyneのボタンを返却
 func CreateImportButton(window fyne.Window) *fyne.Container {
 
 	importBtn := widget.NewButton("Please select an Excel file.", func() {
-		importFile, err := filedialog.File().Filter("", "xlsx").Title("ファイルを選択してください").Load()
+		importFile, err := filedialog.File().Filter("Excel files", "xlsx").Title("ファイルを選択してください").Load()
 		if err != nil {
 			dialog.ShowError(err, window)
 			return
@@ -37,7 +35,6 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		}
 		var noTargetList []string
 		for i := 5; i < len(idxRows); i++ {
-			// DDL除外がONなら除外対象,参照出来ないシートは無視
 			if idxRows[i][52] == "ON" {
 				noTargetList = append(noTargetList, idxRows[i][22])
 			}
@@ -45,20 +42,24 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 
 		stm := ddl.Statement{}
 
+		// Excel内の除外シート以外を対象とする
 		for _, sheet := range readFile.GetSheetMap() {
 			for _, list := range noTargetList {
 				rows, err := readFile.GetRows(sheet)
 				if err != nil {
 					log.Fatal(err)
 				}
-
-				if list != rows[TableNameRow][TableNameColumn] {
-					stm.GenerateDDL(rows)
+				if list != rows[constant.TableNameRow][constant.TableNameColumn] {
+					err := stm.GenerateDDL(rows)
+					if err != nil {
+						// errorがあれば抜けたい
+						fmt.Printf("\n%s : %s", rows[constant.TableNameRow][constant.TableNameColumn], err)
+					}
 				}
 			}
 		}
 
-		filename, err := filedialog.File().Filter("", "txt").Title("保存する先を選択して下さい").Save()
+		filename, err := filedialog.File().Filter("SQL files", "sql").Title("保存する先を選択して下さい").Save()
 		if err != nil {
 			dialog.ShowError(err, window)
 			return
@@ -70,5 +71,6 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 			return
 		}
 	})
+
 	return fyne.NewContainerWithLayout(layout.NewMaxLayout(), importBtn)
 }
