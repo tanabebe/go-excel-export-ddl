@@ -30,7 +30,10 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		if err != nil {
 			log.Fatal(err)
 		}
-		idxRows, _ := readFile.GetRows("目次")
+		idxRows, err := readFile.GetRows("目次")
+		if err != nil {
+			log.Fatal(err)
+		}
 		var noTargetList []string
 		for i := 5; i < len(idxRows); i++ {
 			// DDL除外がONなら除外対象,参照出来ないシートは無視
@@ -42,7 +45,10 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		stm := ddl.Statement{}
 		for _, sheet := range readFile.GetSheetMap() {
 			for _, list := range noTargetList {
-				rows, _ := readFile.GetRows(sheet)
+				rows, err := readFile.GetRows(sheet)
+				if err != nil {
+					log.Fatal(err)
+				}
 				if list != rows[TableNameRow][TableNameColumn] {
 					stm.GenerateDDL(rows)
 				}
