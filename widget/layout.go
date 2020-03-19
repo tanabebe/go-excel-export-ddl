@@ -16,8 +16,13 @@ import (
 	"github.com/tanabebe/go-excel-export-ddl/ddl"
 )
 
+var counter float64
+var errTxt []byte
+
 // CreateImportButton Excelファイルを選択するfyneのボタンを返却
-func CreateImportButton(window fyne.Window) *fyne.Container {
+func CreateImportButton(window fyne.Window) *widget.Box {
+
+	lbl := widget.NewLabelWithStyle("", fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
 
 	importBtn := widget.NewButton("Please select an Excel file.", func() {
 		importFile, err := filedialog.File().Filter("Excel files", "xlsx").Title("ファイルを選択してください").Load()
@@ -29,22 +34,27 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		idxRows, err := readFile.GetRows("目次")
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		var noTargetList []string
 		for i := 5; i < len(idxRows); i++ {
-			if idxRows[i][52] == "ON" {
-				noTargetList = append(noTargetList, idxRows[i][22])
+			if idxRows[i][constant.Exclude] == "ON" {
+				noTargetList = append(noTargetList, idxRows[i][constant.ExcludeTableName])
 			}
 		}
 
 		stm := ddl.Statement{}
 
-		// Excel内の除外シート以外を対象とする
+		prog := dialog.NewProgress("start create", "please wait...", window)
+		prog.Show()
+
 		for _, sheet := range readFile.GetSheetMap() {
 			for _, list := range noTargetList {
+
 				rows, err := readFile.GetRows(sheet)
 				if err != nil {
 					log.Fatal(err)
@@ -52,11 +62,20 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 				if list != rows[constant.TableNameRow][constant.TableNameColumn] {
 					err := stm.GenerateDDL(rows)
 					if err != nil {
-						// errorがあれば抜けたい
-						fmt.Printf("\n%s : %s", rows[constant.TableNameRow][constant.TableNameColumn], err)
+						fmt.Sprintf("%s : %s\n", rows[constant.TableNameRow][constant.TableNameColumn], err)
+						errTxt = append(errTxt, fmt.Sprintf("%s : %s\n", rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 					}
 				}
 			}
+			counter += (counter + 1) / float64(readFile.SheetCount)
+			prog.SetValue(counter)
+		}
+		prog.Hide()
+
+		if errTxt != nil {
+			lbl.SetText(string(errTxt))
+		} else {
+			lbl.SetText("All created successfully!!")
 		}
 
 		filename, err := filedialog.File().Filter("SQL files", "sql").Title("保存する先を選択して下さい").Save()
@@ -72,5 +91,7 @@ func CreateImportButton(window fyne.Window) *fyne.Container {
 		}
 	})
 
-	return fyne.NewContainerWithLayout(layout.NewMaxLayout(), importBtn)
+	btn := fyne.NewContainerWithLayout(layout.NewMaxLayout(), importBtn)
+
+	return widget.NewVBox(btn, lbl)
 }
