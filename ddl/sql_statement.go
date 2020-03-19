@@ -14,6 +14,7 @@ type Statement struct {
 // GenerateDDL Excel内の1シート毎のDDLの全てを生成する
 func (s *Statement) GenerateDDL(rows [][]string) error {
 	sql := make([]byte, 0)
+	sql = append(sql, fmt.Sprintf("DROP TABLE %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
 	sql = append(sql, "CREATE TABLE "...)
 	sql = append(sql, rows[constant.TableNameRow][constant.TableNameColumn]...)
 	sql = append(sql, " (\n"...)
@@ -67,7 +68,7 @@ func GenerateSQLColumn(rows [][]string, i int) ([]byte, error) {
 		sql = append(sql, " timestamp"...)
 	// 該当しないデータ型はエラーにする
 	default:
-		return sql, fmt.Errorf("%s", "Excelのデータ定義が不正です。")
+		return sql, fmt.Errorf("%s", "Unknown table definition.")
 	}
 	if rows[i][constant.NotNull] != "" {
 		sql = append(sql, " NOT NULL "...)
