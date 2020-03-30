@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/dialog"
@@ -17,6 +18,7 @@ import (
 )
 
 var counter float64
+var bar float64
 var errTxt []byte
 
 // CreateImportButton Excelファイルを選択するfyneのボタンを返却
@@ -40,37 +42,46 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 			log.Fatal(err)
 		}
 
-		var noTargetList []string
+		var TargetList []string
 		for i := 5; i < len(idxRows); i++ {
-			if idxRows[i][constant.Exclude] == "ON" {
-				noTargetList = append(noTargetList, idxRows[i][constant.ExcludeTableName])
+			if idxRows[i][constant.Exclude] != "ON" {
+				TargetList = append(TargetList, idxRows[i][constant.TargetSheetName])
 			}
 		}
 
 		stm := ddl.Statement{}
 
-		prog := dialog.NewProgress("start create", "please wait...", window)
-		prog.Show()
+		progress := dialog.NewProgress("start create", "please wait...", window)
+		progress.Show()
 
-		for _, sheet := range readFile.GetSheetMap() {
-			for _, list := range noTargetList {
-
-				rows, err := readFile.GetRows(sheet)
+		// 以降はエラーがあっても処理は中断させない
+		for _, list := range TargetList {
+			rows, err := readFile.GetRows(list)
+			if err != nil {
+				errTxt = append(errTxt, fmt.Sprintf("%s\n", err)...)
+			}
+			if rows != nil && list != rows[constant.TableNameRow][constant.TableNameColumn] {
+				err := stm.DropStatement(rows)
 				if err != nil {
-					log.Fatal(err)
+					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
-				if list != rows[constant.TableNameRow][constant.TableNameColumn] {
-					err := stm.GenerateDDL(rows)
-					if err != nil {
-						fmt.Sprintf("%s : %s\n", rows[constant.TableNameRow][constant.TableNameColumn], err)
-						errTxt = append(errTxt, fmt.Sprintf("%s : %s\n", rows[constant.TableNameRow][constant.TableNameColumn], err)...)
-					}
+				err = stm.CreateStatement(rows)
+				if err != nil {
+					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
+				}
+				pk := ddl.PrimaryKeyStatement(rows)
+				err = stm.ColumnStatement(rows, pk)
+				if err != nil {
+					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
 			}
-			counter += (counter + 1) / float64(readFile.SheetCount)
-			prog.SetValue(counter)
+			counter += 1.0
+			bar = counter / float64(len(TargetList))
+			progress.SetValue(bar)
 		}
-		prog.Hide()
+
+		time.Sleep(time.Millisecond * 100)
+		progress.Hide()
 
 		if errTxt != nil {
 			lbl.SetText(string(errTxt))
@@ -90,8 +101,10 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 			return
 		}
 	})
-
 	btn := fyne.NewContainerWithLayout(layout.NewMaxLayout(), importBtn)
-
 	return widget.NewVBox(btn, lbl)
+}
+
+func ErrMsg(tableName string, err error) string {
+	return fmt.Sprintf("%s : %s\n", tableName, err)
 }
