@@ -2,6 +2,7 @@ package ddl
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tanabebe/go-excel-export-ddl/constant"
 )
@@ -11,82 +12,107 @@ type Statement struct {
 	Ddl []byte // DDLの実行文
 }
 
-// GenerateDDL Excel内の1シート毎のDDLの全てを生成する
-func (s *Statement) GenerateDDL(rows [][]string) error {
-	sql := make([]byte, 0)
-	sql = append(sql, fmt.Sprintf("DROP TABLE %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
-	sql = append(sql, "CREATE TABLE "...)
-	sql = append(sql, rows[constant.TableNameRow][constant.TableNameColumn]...)
-	sql = append(sql, " (\n"...)
+// DropStatement DROP文を作成する
+func (s *Statement) DropStatement(rows [][]string) error {
+	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
+		s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
+	} else {
+		return fmt.Errorf("%s", "drop statement error.\nUnknown table definition.")
+	}
+	return nil
+}
 
+// CreateStatement CREATE文を作成する
+func (s *Statement) CreateStatement(rows [][]string) error {
+	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
+		s.Ddl = append(s.Ddl, "CREATE TABLE "...)
+		s.Ddl = append(s.Ddl, rows[constant.TableNameRow][constant.TableNameColumn]...)
+		s.Ddl = append(s.Ddl, " (\n"...)
+	} else {
+		return fmt.Errorf("%s", "create statement error.\nUnknown table definition.")
+	}
+	return nil
+}
+
+// ColumnStatement Columnの定義文を作成する
+func (s *Statement) ColumnStatement(rows [][]string, pk []string) error {
 	for i := 10; i < len(rows); i++ {
 		if rows[i] == nil || len(rows[i]) < 7 {
 			break
 		}
 		if rows[i][constant.Column] != "" {
-			result, err := GenerateSQLColumn(rows, i)
+			err := s.GenerateColumn(rows, i, pk)
 			if err != nil {
 				return err
 			}
-			sql = append(sql, result...)
 		}
 	}
-	sql = append(sql, ");\n\n"...)
-	s.Ddl = append(s.Ddl, sql...)
 	return nil
 }
 
-// GenerateSQLColumn DDLのカラム定義を生成
-func GenerateSQLColumn(rows [][]string, i int) ([]byte, error) {
-	sql := make([]byte, 0)
+// PrimaryKeyStatement PKを生成する
+func PrimaryKeyStatement(rows [][]string) []string {
+	pk := make([]string, 0)
+	for i := 10; i < len(rows); i++ {
+		if rows[i] == nil || len(rows[i]) < 7 {
+			break
+		}
+		if rows[i][constant.Column] != "" && rows[i][constant.Pk] != "" {
+			pk = append(pk, rows[i][constant.Column])
+		}
+	}
+	return pk
+}
 
-	sql = append(sql, fmt.Sprintf("%4s", "")...)
-	sql = append(sql, rows[i][constant.Column]...)
+// GenerateColumn カラムの定義を全て作成する
+func (s *Statement) GenerateColumn(rows [][]string, i int, pk []string) error {
+	s.Ddl = append(s.Ddl, fmt.Sprintf("%4s", "")...)
+	s.Ddl = append(s.Ddl, rows[i][constant.Column]...)
 
 	switch rows[i][constant.DataType] {
 	case "varchar":
 		if rows[i][constant.Length] != "" {
-			sql = append(sql, fmt.Sprintf(" varchar(%s)", rows[i][constant.Length])...)
+			s.Ddl = append(s.Ddl, fmt.Sprintf(" varchar(%s)", rows[i][constant.Length])...)
 		} else {
-			sql = append(sql, " text"...)
+			s.Ddl = append(s.Ddl, " text"...)
 		}
 	case "char":
-		sql = append(sql, " char"...)
+		s.Ddl = append(s.Ddl, " char"...)
 	case "text":
-		sql = append(sql, " text"...)
+		s.Ddl = append(s.Ddl, " text"...)
 	case "smallint":
-		sql = append(sql, " smallint"...)
+		s.Ddl = append(s.Ddl, " smallint"...)
 	case "integer":
-		sql = append(sql, " integer"...)
+		if rows[i][constant.AutoIncrement] != "" {
+			s.Ddl = append(s.Ddl, " SERIAL"...)
+		} else {
+			s.Ddl = append(s.Ddl, " integer"...)
+		}
 	case "bigint":
-		sql = append(sql, " bigint"...)
+		s.Ddl = append(s.Ddl, " bigint"...)
 	case "numeric":
-		sql = append(sql, " numeric"...)
+		s.Ddl = append(s.Ddl, " numeric"...)
 	case "date":
-		sql = append(sql, " date"...)
+		s.Ddl = append(s.Ddl, " date"...)
 	case "timestamp":
-		sql = append(sql, " timestamp"...)
-	// 該当しないデータ型はエラーにする
+		s.Ddl = append(s.Ddl, " timestamp"...)
 	default:
-		return sql, fmt.Errorf("%s", "Unknown table definition.")
+		return fmt.Errorf("%s", "Unknown table definition.")
 	}
 	if rows[i][constant.NotNull] != "" {
-		sql = append(sql, " NOT NULL "...)
-	}
-	if rows[i][constant.Pk] != "" {
-		sql = append(sql, " PRIMARY KEY"...)
+		s.Ddl = append(s.Ddl, " NOT NULL "...)
 	}
 	if rows[i][constant.DefaultValue] != "" {
-		sql = append(sql, fmt.Sprintf(" DEFAULT %s", rows[i][constant.DefaultValue])...)
+		s.Ddl = append(s.Ddl, fmt.Sprintf(" DEFAULT %s", rows[i][constant.DefaultValue])...)
 	}
-	if rows[i][constant.AutoIncrement] != "" {
-		sql = append(sql, " SERIAL"...)
-	}
-
-	if rows[i+1][constant.Column] == "" {
-		sql = append(sql, "\n"...)
+	if rows[i+1][constant.Column] == "" && pk != nil && len(pk) != 0 {
+		s.Ddl = append(s.Ddl, ",\n"...)
+		s.Ddl = append(s.Ddl, fmt.Sprintf("%4sPRIMARY KEY (%s)\n", "", strings.Join(pk, ","))...)
+		s.Ddl = append(s.Ddl, ");\n"...)
+	} else if rows[i+1][constant.Column] == "" && pk != nil && len(pk) == 0 {
+		s.Ddl = append(s.Ddl, "\n);\n"...)
 	} else {
-		sql = append(sql, ", \n"...)
+		s.Ddl = append(s.Ddl, ",\n"...)
 	}
-	return sql, nil
+	return nil
 }
