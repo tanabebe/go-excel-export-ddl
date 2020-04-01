@@ -84,7 +84,7 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 		time.Sleep(time.Millisecond * 100)
 		progress.Hide()
 
-		if errTxt != nil {
+		if len(errTxt) != 0 {
 			lbl.SetText(string(errTxt))
 		} else {
 			lbl.SetText("All created successfully!!")
