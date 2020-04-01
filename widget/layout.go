@@ -44,7 +44,7 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 
 		var TargetList []string
 		for i := 5; i < len(idxRows); i++ {
-			if idxRows[i][constant.Exclude] != "ON" {
+			if idxRows[i][constant.SheetIndexTableName] != "" && idxRows[i][constant.Exclude] != "ON" {
 				TargetList = append(TargetList, idxRows[i][constant.TargetSheetName])
 			}
 		}
@@ -54,6 +54,7 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 		progress := dialog.NewProgress("start create", "please wait...", window)
 		progress.Show()
 
+		errTxt = make([]byte, 0)
 		// 以降はエラーがあっても処理は中断させない
 		for _, list := range TargetList {
 			rows, err := readFile.GetRows(list)
