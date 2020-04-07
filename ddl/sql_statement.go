@@ -105,7 +105,7 @@ func (s *Statement) GenerateColumn(rows [][]string, i int, pk []string) error {
 	if rows[i][constant.DefaultValue] != "" {
 		s.Ddl = append(s.Ddl, fmt.Sprintf(" DEFAULT %s", rows[i][constant.DefaultValue])...)
 	}
-	if rows[i+1][constant.Column] == "" && pk != nil && len(pk) != 0 {
+	if rows[i+1] == nil || rows[i+1][constant.Column] == "" && pk != nil && len(pk) != 0 {
 		s.Ddl = append(s.Ddl, ",\n"...)
 		s.Ddl = append(s.Ddl, fmt.Sprintf("%4sPRIMARY KEY (%s)\n", "", strings.Join(pk, ","))...)
 		s.Ddl = append(s.Ddl, ");\n"...)
