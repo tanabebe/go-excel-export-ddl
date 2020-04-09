@@ -12,10 +12,21 @@ type Statement struct {
 	Ddl []byte // DDLの実行文
 }
 
+// SchemaStatement Schemaの作成を行う
+func (s *Statement) SchemaStatement(schemaList []string) {
+	for _, v := range schemaList {
+		s.Ddl = append(s.Ddl, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s;\n", v)...)
+	}
+}
+
 // DropStatement DROP文を作成する
-func (s *Statement) DropStatement(rows [][]string) error {
+func (s *Statement) DropStatement(rows [][]string, schema string) error {
 	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
-		s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
+		if schema == "" {
+			s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
+		} else {
+			s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s.%s;\n", schema, rows[constant.TableNameRow][constant.TableNameColumn])...)
+		}
 	} else {
 		return fmt.Errorf("%s", "drop statement error.\nUnknown table definition.")
 	}
@@ -23,10 +34,14 @@ func (s *Statement) DropStatement(rows [][]string) error {
 }
 
 // CreateStatement CREATE文を作成する
-func (s *Statement) CreateStatement(rows [][]string) error {
+func (s *Statement) CreateStatement(rows [][]string, schema string) error {
 	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
 		s.Ddl = append(s.Ddl, "CREATE TABLE "...)
-		s.Ddl = append(s.Ddl, rows[constant.TableNameRow][constant.TableNameColumn]...)
+		if schema == "" {
+			s.Ddl = append(s.Ddl, rows[constant.TableNameRow][constant.TableNameColumn]...)
+		} else {
+			s.Ddl = append(s.Ddl, fmt.Sprintf("%s.%s", schema, rows[constant.TableNameRow][constant.TableNameColumn])...)
+		}
 		s.Ddl = append(s.Ddl, " (\n"...)
 	} else {
 		return fmt.Errorf("%s", "create statement error.\nUnknown table definition.")

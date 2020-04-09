@@ -42,42 +42,54 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 			log.Fatal(err)
 		}
 
-		var TargetList []string
+		var targetList []string
+		var schema []string
 		for i := 5; i < len(idxRows); i++ {
 			if idxRows[i][constant.SheetIndexTableName] != "" && idxRows[i][constant.Exclude] != "ON" {
-				TargetList = append(TargetList, idxRows[i][constant.TargetSheetName])
+				targetList = append(targetList, idxRows[i][constant.TargetSheetName])
+				schema = append(schema, idxRows[i][constant.SchemaName])
 			}
 		}
-
-		stm := ddl.Statement{}
 
 		progress := dialog.NewProgress("start create", "please wait...", window)
 		progress.Show()
 
 		errTxt = make([]byte, 0)
+		var schemaIndex int
+		stm := ddl.Statement{}
+		mergeSlice := make([]string, 0)
+
+		// スキーマの重複を削除してスライスの作成し直し
+		for _, v := range schema {
+			if v != "" && !SchemaContains(mergeSlice, v) {
+				mergeSlice = append(mergeSlice, v)
+			}
+		}
+
+		// schema指定がなくてもエラーとはさせない
+		stm.SchemaStatement(mergeSlice)
+
 		// 以降はエラーがあっても処理は中断させない
-		for _, list := range TargetList {
+		for _, list := range targetList {
 			rows, err := readFile.GetRows(list)
 			if err != nil {
 				errTxt = append(errTxt, fmt.Sprintf("%s\n", err)...)
 			}
 			if rows != nil && list != rows[constant.TableNameRow][constant.TableNameColumn] {
-				err := stm.DropStatement(rows)
-				if err != nil {
+				if err := stm.DropStatement(rows, schema[schemaIndex]); err != nil {
 					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
-				err = stm.CreateStatement(rows)
-				if err != nil {
+				if err := stm.CreateStatement(rows, schema[schemaIndex]); err != nil {
 					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
 				pk := ddl.PrimaryKeyStatement(rows)
-				err = stm.ColumnStatement(rows, pk)
-				if err != nil {
+				if err := stm.ColumnStatement(rows, pk); err != nil {
 					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
 			}
+			schemaIndex += 1
 			counter += 1.0
-			bar = counter / float64(len(TargetList))
+			bar = counter / float64(len(targetList))
 			progress.SetValue(bar)
 		}
 
@@ -106,6 +118,17 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 	return widget.NewVBox(btn, lbl)
 }
 
+// ErrMsg　画面表示用のメッセージを返却する
 func ErrMsg(tableName string, err error) string {
 	return fmt.Sprintf("%s : %s\n", tableName, err)
+}
+
+// SchemaContains 重複するスキーマ名を除去する
+func SchemaContains(sl []string, str string) bool {
+	for _, v := range sl {
+		if str == v {
+			return true
+		}
+	}
+	return false
 }
