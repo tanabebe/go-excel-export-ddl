@@ -38,7 +38,7 @@ func (s *Statement) CreateStatement(rows [][]string, schema string) error {
 	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
 		s.Ddl = append(s.Ddl, "CREATE TABLE "...)
 		if schema == "" {
-			s.Ddl = append(s.Ddl, rows[constant.TableNameRow][constant.TableNameColumn]...)
+			s.Ddl = append(s.Ddl, fmt.Sprintf("%s.%s", "public", rows[constant.TableNameRow][constant.TableNameColumn])...)
 		} else {
 			s.Ddl = append(s.Ddl, fmt.Sprintf("%s.%s", schema, rows[constant.TableNameRow][constant.TableNameColumn])...)
 		}
@@ -130,4 +130,25 @@ func (s *Statement) GenerateColumn(rows [][]string, i int, pk []string) error {
 		s.Ddl = append(s.Ddl, ",\n"...)
 	}
 	return nil
+}
+
+// CommentsStatement コメント用のSQLを作成する.
+// 当処理まで来たら問題ないと判断しエラーは返却しない
+func (s *Statement) CommentsStatement(rows [][]string, schema string) {
+	if schema != "" {
+		s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON TABLE %s.%s IS '%s';\n", schema, rows[constant.TableNameRow][constant.TableNameColumn], rows[4][constant.TableNameColumn])...)
+	} else {
+		s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON TABLE %s.%s IS '%s';\n", "public", rows[constant.TableNameRow][constant.TableNameColumn], rows[4][constant.TableNameColumn])...)
+	}
+
+	for i := 10; i < len(rows); i++ {
+		if schema != "" {
+			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", schema, rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][0])...)
+		} else {
+			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", "public", rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][0])...)
+		}
+		if rows[i+1][constant.Column] == "" && rows[i+1][0] == "" {
+			break
+		}
+	}
 }
