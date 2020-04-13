@@ -147,7 +147,7 @@ func (s *Statement) CommentsStatement(rows [][]string, schema string) {
 		} else {
 			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", "public", rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][0])...)
 		}
-		if rows[i+1][constant.Column] == "" && rows[i+1][0] == "" {
+		if rows[i+1] == nil || rows[i+1][constant.Column] == "" && rows[i+1][0] == "" {
 			break
 		}
 	}
