@@ -23,7 +23,7 @@ func (s *Statement) SchemaStatement(schemaList []string) {
 func (s *Statement) DropStatement(rows [][]string, schema string) error {
 	if rows[constant.TableNameRow][constant.TableNameColumn] != "" {
 		if schema == "" {
-			s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", rows[constant.TableNameRow][constant.TableNameColumn])...)
+			s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s.%s;\n", "public", rows[constant.TableNameRow][constant.TableNameColumn])...)
 		} else {
 			s.Ddl = append(s.Ddl, fmt.Sprintf("DROP TABLE IF EXISTS %s.%s;\n", schema, rows[constant.TableNameRow][constant.TableNameColumn])...)
 		}
