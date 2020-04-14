@@ -1,6 +1,7 @@
 package constant
 
 const (
+	LogicColumnName     = 0  // COMMENTに使用するカラムの論理名
 	TargetSheetName     = 3  // DDLの除外対象だった場合に使用するシート名
 	TableNameRow        = 5  // テーブル名が記載されている行
 	TableNameColumn     = 8  // テーブル名が記載されている列

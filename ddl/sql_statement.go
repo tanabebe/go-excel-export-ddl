@@ -132,9 +132,9 @@ func (s *Statement) GenerateColumn(rows [][]string, i int, pk []string) error {
 	return nil
 }
 
-// CommentsStatement コメント用のSQLを作成する.
+// CommentStatement コメント用のSQLを作成する.
 // 当処理まで来たら問題ないと判断しエラーは返却しない
-func (s *Statement) CommentsStatement(rows [][]string, schema string) {
+func (s *Statement) CommentStatement(rows [][]string, schema string) {
 	if schema != "" {
 		s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON TABLE %s.%s IS '%s';\n", schema, rows[constant.TableNameRow][constant.TableNameColumn], rows[4][constant.TableNameColumn])...)
 	} else {
@@ -143,11 +143,16 @@ func (s *Statement) CommentsStatement(rows [][]string, schema string) {
 
 	for i := 10; i < len(rows); i++ {
 		if schema != "" {
-			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", schema, rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][0])...)
+			s.Ddl = append(s.Ddl,
+				fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n",
+					schema,
+					rows[constant.TableNameRow][constant.TableNameColumn],
+					rows[i][constant.Column],
+					rows[i][constant.LogicColumnName])...)
 		} else {
-			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", "public", rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][0])...)
+			s.Ddl = append(s.Ddl, fmt.Sprintf("COMMENT ON COLUMN %s.%s.%s IS '%s';\n", "public", rows[constant.TableNameRow][constant.TableNameColumn], rows[i][constant.Column], rows[i][constant.LogicColumnName])...)
 		}
-		if rows[i+1] == nil || rows[i+1][constant.Column] == "" && rows[i+1][0] == "" {
+		if rows[i+1] == nil || rows[i+1][constant.Column] == "" && rows[i+1][constant.LogicColumnName] == "" {
 			break
 		}
 	}
