@@ -86,7 +86,7 @@ func CreateImportButton(window fyne.Window) *widget.Box {
 				if err := stm.ColumnStatement(rows, pk); err != nil {
 					errTxt = append(errTxt, ErrMsg(rows[constant.TableNameRow][constant.TableNameColumn], err)...)
 				}
-				stm.CommentsStatement(rows, schema[schemaIndex])
+				stm.CommentStatement(rows, schema[schemaIndex])
 			}
 			schemaIndex += 1
 			counter += 1.0
