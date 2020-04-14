@@ -104,7 +104,11 @@ func (s *Statement) GenerateColumn(rows [][]string, i int, pk []string) error {
 			s.Ddl = append(s.Ddl, " integer"...)
 		}
 	case "bigint":
-		s.Ddl = append(s.Ddl, " bigint"...)
+		if rows[i][constant.AutoIncrement] != "" {
+			s.Ddl = append(s.Ddl, " BIGSERIAL"...)
+		} else {
+			s.Ddl = append(s.Ddl, " bigint"...)
+		}
 	case "numeric":
 		s.Ddl = append(s.Ddl, " numeric"...)
 	case "date":
